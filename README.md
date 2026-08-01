@@ -3,18 +3,19 @@
 ## Structure
 ```
 index.html                 interface (une seule page, vanilla HTML/CSS/JS)
-manifest.json, sw.js        PWA installable + cache offline de l'interface
+dictation.js                 contrôleur de dictée vocale (chargé par index.html ET par les tests — même code)
+manifest.json, sw.js        PWA installable + cache offline de l'interface (cache v3)
 icons/                       favicon, icônes 192/512
-package.json                 dépendance npm (pdf-parse), Vercel l'installe au build
+package.json                 dépendance npm (unpdf), Vercel l'installe au build
 
 api/translate.js             fonction serverless — wrapper fin
 api/verify-license.js        fonction serverless — wrapper fin
-api/extract-pdf.js           fonction serverless — wrapper fin
+api/extract-pdf.js           fonction serverless — wrapper fin (chargement pdf-parse corrigé, voir plus bas)
 api/revise.js                fonction serverless — wrapper fin (Révision intelligente premium)
 
 lib/translateHandler.js      logique de traduction (découpage, chunking, erreurs)
 lib/verifyLicenseHandler.js  logique de vérification Gumroad + émission de jeton (scope "premium")
-lib/extractPdfHandler.js     logique d'extraction PDF (jeton "premium" requis)
+lib/extractPdfHandler.js     logique d'extraction PDF (jeton "premium" requis, catégorisation d'erreurs honnête)
 lib/reviseHandler.js         logique de la Révision intelligente (jeton "premium" requis, JSON structuré)
 lib/parseRevisionResponse.js parsing + validation stricte du JSON renvoyé par le modèle (pur, testé isolément)
 lib/chunkText.js             découpage de texte long, pur, testé isolément
@@ -23,7 +24,7 @@ lib/rateLimit.js             limitation de requêtes par IP (Upstash Redis)
 lib/cors.js                  CORS restreint (fini le Access-Control-Allow-Origin: *)
 lib/getClientIp.js           extraction d'IP pour le rate limiting
 
-tests/                        80 tests (node:test), tous exécutés et verts
+tests/                        100 tests (node:test), tous exécutés et verts
 ```
 
 ## Déploiement (GitHub → Vercel)
@@ -46,9 +47,143 @@ tests/                        80 tests (node:test), tous exécutés et verts
 5. Remplacer `GUMROAD_PRODUCT_ID` et `GUMROAD_PRODUCT_URL` dans
    `index.html` par les vraies valeurs de ton produit Gumroad.
 6. **Après ce déploiement précis** : le service worker est passé en cache
-   `motamot-v2` (il était resté en `v1` alors que le JS avait changé) — les
+   `motamot-v3` (nouveau fichier `dictation.js` à pré-cacher) — les
    appareils qui avaient déjà installé l'app récupéreront automatiquement
    la nouvelle version au prochain chargement.
+7. **Le fichier `dictation.js` doit être déposé à la racine du repo**, au
+   même niveau que `index.html` — sans lui, la dictée ne fonctionne plus du
+   tout (le bouton micro se masque, `createDictationController is not
+   defined`).
+
+## Correction du bug PDF — passage de `pdf-parse` à `unpdf`
+
+**Historique** : la passe précédente avait diagnostiqué et corrigé un
+problème de chargement de `pdf-parse` (mode debug déclenché par
+`module.parent` vide en environnement serverless). Le correctif
+fonctionnait en partie (plus de faux "corrompu" générique), mais restait
+fragile — `pdf-parse` n'est pas conçu pour serverless/edge et peut encore
+avoir des comportements dépendant de l'environnement d'exécution.
+
+**Changement de cette passe** : remplacement complet de `pdf-parse` par
+**`unpdf`**, un package conçu spécifiquement pour serverless/edge (aucun
+accès filesystem requis, pas de mode debug caché, basé sur `pdf.js`).
+`unpdf` est **ESM-only** — chargé via `import()` dynamique depuis
+`api/extract-pdf.js` (fonctionne nativement depuis un fichier CommonJS,
+aucun changement de `"type"` requis dans `package.json`).
+
+**Ce qui est conservé à l'identique** :
+- Extraction toujours côté serveur (jamais côté client)
+- Jeton premium signé (`scope: "premium"`) vérifié avant tout traitement
+- Limite de 4 Mo par fichier
+- Vérification de la signature `%PDF-` avant d'appeler le parseur
+- Catégorisation des erreurs en familles distinctes (voir plus bas) —
+  **"PDF scanné" n'est renvoyé que lorsque le parseur s'ouvre correctement
+  ET ne trouve réellement aucun texte** (jamais en cas d'échec du parseur
+  lui-même, qui remonte une erreur "interne" ou "corrompu" séparée)
+
+**Nouveau dans cette passe** :
+- Catégorie supplémentaire : **PDF protégé par mot de passe** (détection
+  via `PasswordException`, l'exception typique de pdf.js) → message dédié,
+  jamais confondu avec "corrompu"
+- Journalisation étendue à la vraie erreur Vercel : `{ name, message, code,
+  stack }` — le `stack` est la trace d'exécution réelle, essentielle pour
+  diagnostiquer en prod ; il ne contient ni le contenu du PDF ni le jeton
+  premium, donc rien de sensible n'y transite
+- Détection élargie des PDF malformés aux exceptions pdf.js
+  (`InvalidPDFException`, `UnexpectedResponseException`), en plus des
+  motifs texte déjà couverts
+
+## Tests avec de vrais fichiers PDF (`tests/fixtures/`)
+
+Cinq vrais PDF (pas des mocks) ont été générés et inclus dans le dossier de
+tests, avec un contenu connu pour pouvoir vérifier l'extraction :
+- `simple-text.pdf` — une phrase courte
+- `multi-paragraph.pdf` — trois paragraphes
+- `accents-francais.pdf` — caractères accentués (é, è, ë, ç...)
+- `scanned-no-text.pdf` — une image sans aucune couche de texte (vrai cas
+  de "PDF scanné"), vérifié avec `pypdf` : produit bien un texte vide
+- `corrupted.pdf` — un PDF tronqué (en-tête `%PDF-` intact, structure
+  interne cassée), vérifié avec `pypdf` : lève bien une erreur de parsing
+
+Ces fixtures sont utilisées par `tests/pdfFixtures.test.js` à deux niveaux :
+1. **Toujours exécuté ici** : signature `%PDF-` sur les 5 fichiers, et le
+   handler complet (jeton, taille, câblage) avec les vrais octets de
+   `simple-text.pdf` — avec un parseur simulé, puisque `unpdf` ne peut pas
+   être installé dans cet environnement de développement (aucun accès
+   réseau, confirmé à nouveau pour cette passe : `npm view unpdf` échoue
+   toujours en 403).
+2. **Exécuté uniquement si `unpdf` est réellement installé** : extraction
+   réelle du texte de chaque fixture, comparée au contenu qu'on sait y
+   avoir mis (ex. vérifie que "révision" et "éléphant" ressortent bien du
+   PDF avec accents). **Dans cet environnement, ces tests sont marqués
+   `skip` avec un message explicite — jamais silencieusement ignorés, et
+   surtout jamais annoncés comme "passés" alors qu'ils ne se sont pas
+   exécutés.** Une fois déployé (ou testé localement avec `npm install`),
+   ces mêmes tests s'exécuteront réellement et vérifieront la vraie
+   extraction.
+
+## Dictée vocale — DÉSACTIVÉE TEMPORAIREMENT (01/08, après ce déploiement)
+Malgré la correction (relance automatique via `dictation.js`), un
+comportement instable a été signalé en usage réel après déploiement
+(coupure après quelques secondes). Plutôt que de laisser une fonctionnalité
+visiblement cassée en production, le bouton micro est masqué via un
+interrupteur simple dans `index.html` : `const DICTATION_DISABLED = true;`.
+
+Le code de `dictation.js` et son câblage restent intacts et testés (13
+tests toujours verts) — ce n'est pas un retour en arrière sur le travail,
+juste une mise en pause le temps d'un vrai diagnostic avec les logs d'un
+appareil réel (console navigateur, quel événement `onerror` se déclenche
+exactement et à quel moment). Pour réactiver : repasser
+`DICTATION_DISABLED` à `false` dans `index.html`.
+
+**Cause probable non confirmée** : les tests ici simulent le cycle
+`onresult`/`onerror`/`onend` tel que documenté, mais ne peuvent pas
+reproduire le comportement exact d'un vrai navigateur mobile (permissions,
+interruptions système, spécificités iOS Safari vs Chrome Android). Le
+diagnostic réel nécessite les logs de la console sur l'appareil qui a
+reproduit le problème.
+
+
+
+**Cause** : une seule session `SpeechRecognition`, jamais relancée après la
+coupure automatique du navigateur (comportement natif de l'API, pas un bug
+Motamot en soi — mais l'app ne compensait pas).
+
+**Correctif** : la logique a été extraite dans `dictation.js` (nouveau
+fichier, chargé par `index.html` en `<script src="dictation.js">` avant le
+script principal) sous forme de contrôleur à état : `start()` / `stop()` /
+`toggle()` / `handleVisibilityChange()`. Comportement :
+- 1er clic : démarre l'écoute, état visuel `recording`, statut "Écoute en
+  cours… Appuie de nouveau pour arrêter."
+- Si la reconnaissance se termine automatiquement (coupure navigateur) et
+  que l'utilisateur n'a pas demandé l'arrêt : relance une nouvelle session
+  après 300 ms (dans la fourchette 250–400 ms demandée).
+- 2e clic : arrêt volontaire, aucune relance, statut "Dictée terminée."
+- Jamais de relance après `not-allowed`, `service-not-allowed` ou
+  `audio-capture` (micro refusé/absent) — arrêt définitif avec message
+  d'erreur clair.
+- Relance autorisée après `no-speech` ou fin automatique tant que
+  l'utilisateur n'a pas arrêté.
+- Arrêt propre quand `document.visibilityState` passe à `hidden` (page mise
+  en arrière-plan).
+- Le texte déjà dicté n'est jamais effacé entre deux sessions — chaque
+  segment final transcrit s'ajoute au texte existant.
+- Aucun enregistrement audio à aucun moment ; le micro ne tourne jamais en
+  arrière-plan (coupé explicitement sur `visibilitychange`).
+
+`dictation.js` est écrit pour tourner identique dans le navigateur
+(`window.createDictationController`) et sous Node (`module.exports`) — les
+tests exécutent **exactement le même fichier** que celui chargé par l'app,
+pas une copie parallèle, avec une fausse `SpeechRecognition` et des timers
+simulés (`node:test` MockTimers, aucun vrai délai attendu).
+
+**Ce qui N'est PAS vérifié, honnêtement** : aucun navigateur réel n'a
+tourné dans cet environnement — la fausse `SpeechRecognition` reproduit le
+cycle d'événements (`onresult`/`onerror`/`onend`) tel que documenté, mais je
+ne peux pas garantir que Chrome/Safari mobile se comportent exactement
+ainsi en toutes circonstances (fond sonore, interruption d'appel, etc.). Le
+délai de coupure automatique (~10s) est celui rapporté dans ton compte
+rendu, pas mesuré ici.
 
 ## Révision intelligente premium — ce qui a changé dans cette passe corrective
 
@@ -154,15 +289,38 @@ n'apparaît que dans le code serveur et ce README, jamais dans l'interface.
 Taille de fichier plafonnée à 4 Mo, messages d'erreur différenciés (PDF
 scanné, fichier corrompu, fichier vide, réponse serveur inattendue).
 
-## Tests — exécutés réellement, pas juste écrits
+## Tests — compte-rendu honnête exact
 
 ```
 node --test "tests/**/*.test.js"
 
-tests 80
-pass  80
-fail  0
+tests    110
+pass     105
+fail     0
+skipped  5
 ```
+
+- **Nombre exact de tests** : 110
+- **Réussites** : 105
+- **Échecs** : 0
+- **Skippés (ni pass ni fail)** : 5 — les extractions `unpdf` réelles sur
+  fixtures (voir section dédiée ci-dessus). Marqués `skip` explicitement
+  plutôt que retirés ou faussement comptés comme réussis.
+- **Vrai parsing PDF exécuté** : NON — `unpdf` n'a jamais tourné dans cet
+  environnement (aucun accès réseau, testé à nouveau pour cette passe :
+  `npm view unpdf` échoue toujours en 403). Les 5 tests qui l'auraient
+  utilisé sont skippés, pas simulés à leur place.
+- **Navigateur réel testé** : NON — `dictation.js` est testé sous Node avec
+  une fausse `SpeechRecognition` et des timers simulés, jamais dans Chrome,
+  Safari ou un navigateur mobile réel (et de toute façon désactivé pour
+  l'instant, voir plus haut).
+- **Services externes simulés** : Groq, Gumroad, Upstash Redis, et
+  `unpdf` — les quatre sont mockés/skippés dans l'ensemble de la suite,
+  aucun n'a réellement tourné.
+
+Nouveaux tests de cette passe : 10 (1 pour le cas "PDF protégé par mot de
+passe", 9 dans `tests/pdfFixtures.test.js` — dont 5 skippés comme indiqué
+ci-dessus).
 
 Couverture de `lib/reviseHandler.js` et `lib/parseRevisionResponse.js` —
 correspond exactement à la liste demandée :
@@ -176,6 +334,13 @@ autorisée vs refusée), et conservation des noms/chiffres dans le prompt
 envoyé (vérifié en inspectant le corps de la requête réellement envoyée à
 Groq dans le test).
 
+Couverture de la dictée (`tests/dictationController.test.js`) — correspond
+à la liste demandée : relance après fin automatique, aucune relance après
+arrêt utilisateur, aucune relance après `not-allowed`/`service-not-allowed`/
+`audio-capture`, relance autorisée après `no-speech`, absence de double
+relance, absence de duplication du texte transcrit, arrêt sur
+`visibilitychange`, conservation du texte à travers une relance.
+
 **Ce qui N'est PAS testé, et pourquoi (honnêteté avant tout)** :
 - **Groq en conditions réelles.** Cet environnement de développement n'a pas
   d'accès réseau — tout est mocké (`fetchImpl` injecté). Je ne peux pas
@@ -184,7 +349,10 @@ Groq dans le test).
   `lib/parseRevisionResponse.js` a une extraction de secours et rejette
   proprement plutôt que de planter si le modèle dévie.
 - **`pdf-parse` en conditions réelles** — même raison, `npm install` est
-  impossible ici.
+  impossible ici (testé à nouveau pour cette passe : toujours un 403).
+- **`dictation.js` dans un vrai navigateur** — la fausse `SpeechRecognition`
+  suit le cycle d'événements documenté, mais aucun test ici ne remplace un
+  essai sur un vrai téléphone.
 - **Gumroad et Upstash en conditions réelles** — mêmes raisons.
 - **Le comportement dans un vrai navigateur** (rendu de la section "Version
   révisée", Web Share API, localStorage) — aucun test ici ne tourne dans un
