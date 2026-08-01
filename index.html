@@ -3,17 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Motamot — Traduction sans limite</title>
-<meta name="description" content="Traduisez vos textes sans limite, dans la langue de votre choix.">
+<title>Motamot — traduisez avec le bon ton</title>
+<meta name="description" content="Traduisez vos textes naturellement, sans perdre le sens.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon.png" type="image/png">
-<meta name="theme-color" content="#14182B">
+<meta name="theme-color" content="#08161d">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 <style>
   :root {
     --ink: #14182B;
@@ -320,6 +319,8 @@
   }
 
   button.ghost:hover { border-color: var(--jade-bright); color: var(--jade-bright); }
+  button.ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.ghost:disabled:hover { border-color: var(--line); color: var(--text-paper); }
 
   .status {
     font-family: 'JetBrains Mono', monospace;
@@ -521,6 +522,100 @@
   .modal-status.error { color: var(--danger); }
   .modal-status.ok { color: var(--jade); }
 
+  .revised-section {
+    display: none;
+    margin-top: 18px;
+    background: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 20px;
+  }
+  .revised-section.open { display: block; }
+
+  .revised-head h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--amber);
+  }
+
+  .revised-output {
+    background: var(--paper-soft);
+    color: var(--text-ink);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    margin-bottom: 14px;
+  }
+
+  .checks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-paper);
+    background: rgba(241,237,226,0.05);
+    border-radius: 9px;
+    padding: 8px 10px;
+  }
+
+  .check-item .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .check-item.pass .dot { background: var(--jade-bright); }
+  .check-item.fail .dot { background: var(--danger); }
+
+  .changes-block, .warnings-block {
+    margin-bottom: 14px;
+  }
+
+  .changes-title, .warnings-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .changes-list, .warnings-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-paper);
+  }
+  .warnings-list { color: #E8C48A; }
+
+  .sensitive-notice {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    margin-bottom: 14px;
+  }
+
+  .revised-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   @media (min-width: 760px) {
     .panels { flex-direction: row; align-items: stretch; }
     .panel { flex: 1; }
@@ -528,6 +623,63 @@
     .seam::before, .seam::after { width: 1px; height: auto; background: repeating-linear-gradient(180deg, var(--muted) 0 4px, transparent 4px 9px); }
   }
 </style>
+
+<style id="motamot-v2-design">
+:root{
+  --ink:#08161d;--ink-soft:#10232b;--ink-raised:#153039;
+  --paper:#f4ecda;--paper-soft:#ebe1cb;--text-ink:#172326;
+  --text-paper:#f5f1e8;--muted:#91a1a3;--jade:#2f786b;
+  --jade-bright:#52a08f;--amber:#d5a548;--line:rgba(225,239,235,.13);
+  --danger:#cb6b63;--shadow:0 24px 55px -30px rgba(0,0,0,.88);
+}
+html{background:var(--ink);scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(circle at 92% 4%,rgba(56,132,116,.18),transparent 27rem),
+    radial-gradient(circle at 5% 78%,rgba(213,165,72,.08),transparent 24rem),
+    linear-gradient(180deg,#0b1d25 0%,#07151b 100%);
+  min-height:100dvh;
+}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.24;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E")}
+.wrap{max-width:980px;padding:18px 14px 100px}
+header{margin-bottom:18px;padding:10px 4px 17px;border-bottom-color:var(--line)}
+.brand{font-size:28px;line-height:1}.tagline{margin-top:4px;font-size:9px;color:#90a2a4}
+.history-toggle{min-height:44px;border-radius:14px;background:rgba(255,255,255,.035);padding:10px 13px;box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.mode-row{background:rgba(16,35,43,.68);border:1px solid var(--line);border-radius:18px;padding:8px;margin-bottom:12px;box-shadow:0 16px 30px -25px #000;backdrop-filter:blur(16px)}
+.segmented{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.04);border-radius:13px;padding:4px}
+.segmented button{min-height:36px;border-radius:10px;padding:8px 14px}
+.segmented button.active{background:linear-gradient(135deg,#316f65,#255e56);box-shadow:0 8px 18px -12px #000,inset 0 1px rgba(255,255,255,.15)}
+.tool-icons{gap:7px}.icon-btn{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.035);box-shadow:inset 0 1px rgba(255,255,255,.05)}
+.stage{padding-top:2px}.panels{gap:10px}
+.panel{border-radius:24px;padding:17px 17px 14px;border:1px solid rgba(255,255,255,.38);box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.7);overflow:hidden}
+.panel:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--jade),rgba(47,120,107,.15),var(--amber));opacity:.8}
+.panel.target{background:linear-gradient(145deg,#ece2cb,#e4d7bb)}
+.panel.source{background:linear-gradient(145deg,#f7efdf,#ede3ce)}
+.panel-head{margin-bottom:11px}.lang-select{min-height:38px;padding-left:10px;border-radius:10px;background-color:rgba(255,255,255,.3);background-position:calc(100% - 10px) center;padding-right:30px;font-size:11px}
+.char-count{background:rgba(23,35,38,.07);padding:6px 8px;border-radius:9px}
+textarea,.output{min-height:132px;font-size:18px;line-height:1.48}
+textarea{resize:none}.output{padding:2px 1px 5px}
+.seam{height:34px;padding:0}.seam:before,.seam:after{opacity:.25}
+.swap-btn{width:48px;height:48px;background:linear-gradient(145deg,#347f71,#28685e);box-shadow:0 12px 24px -14px #000,inset 0 1px rgba(255,255,255,.2);border:5px solid #0a1a21}
+.result-actions{display:flex;gap:6px}.result-actions .ghost{min-width:42px;min-height:36px;border-color:rgba(23,35,38,.12);color:var(--text-ink);background:rgba(255,255,255,.22);border-radius:10px}
+.actions{position:sticky;bottom:10px;z-index:12;margin-top:14px;padding:8px;background:rgba(8,22,29,.84);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(18px);box-shadow:0 18px 45px -22px #000}
+button.primary{flex:1;min-height:50px;border-radius:14px;background:linear-gradient(135deg,#3d8a7b,#2d7064);color:#fff;font-size:15px;box-shadow:0 12px 24px -15px rgba(59,145,127,.9),inset 0 1px rgba(255,255,255,.18)}
+button.primary:hover{box-shadow:0 16px 26px -15px rgba(59,145,127,.9)}
+.actions .ghost{min-height:50px;border-radius:14px;padding-inline:16px;background:rgba(255,255,255,.035)}
+.status{padding:0 5px}.history-panel{border-top:0;margin-top:15px;background:rgba(16,35,43,.7);border:1px solid var(--line);border-radius:20px;padding:16px}.history-item{border:1px solid rgba(255,255,255,.055);box-shadow:inset 0 1px rgba(255,255,255,.03)}
+footer{margin-top:24px;padding:0 22px;line-height:1.7;font-size:10px;color:#71888b}
+.modal-overlay{background:rgba(2,12,16,.84);backdrop-filter:blur(10px)}.modal-panel{border-radius:24px;border:1px solid rgba(255,255,255,.55)}
+.mobile-caption{display:flex;align-items:center;gap:8px;margin:2px 4px 12px;color:#a7b7b7;font-size:12px}.mobile-caption:before{content:"";width:26px;height:1px;background:var(--amber)}
+@media(max-width:560px){
+  .wrap{padding-top:8px}.history-toggle{font-size:0;width:44px;padding:0;justify-content:center}.history-toggle svg{width:18px;height:18px}
+  header img{width:36px!important;height:36px!important}.brand{font-size:24px}.tagline{font-size:8px}
+  .mode-row{position:relative}.segmented{flex:1}.segmented button{flex:1}.panels{gap:0}.panel{border-radius:22px;padding:15px}
+  textarea,.output{min-height:118px;font-size:17px}.seam{height:32px}.actions{bottom:8px}.actions .ghost{font-size:0;width:50px;padding:0}.actions .ghost:after{content:"×";font-size:24px;font-weight:300}
+  footer{padding-bottom:10px}
+}
+@media(min-width:760px){.panels{gap:0}.seam{height:auto;width:74px;padding:0 10px}.panel{min-height:330px}.actions{max-width:520px;margin-left:auto;margin-right:auto}.mobile-caption{display:none}}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -536,7 +688,7 @@
       <img src="icons/icon-192.png" alt="Motamot" style="width:38px; height:38px; border-radius:9px;">
       <div>
         <div class="brand">Mota<em>mot</em></div>
-        <div class="tagline">Traduction — sans limite</div>
+        <div class="tagline">Le bon ton, sans perdre le sens</div>
       </div>
     </div>
     <button class="history-toggle" id="historyToggle" title="Historique">
@@ -561,6 +713,8 @@
       <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none;">
     </div>
   </div>
+
+  <div class="mobile-caption">Traduisez avec le bon ton, sans perdre le sens.</div>
 
   <div class="stage">
     <div class="panels">
@@ -611,12 +765,47 @@
             <option value="japonais">Japonais</option>
             <option value="russe">Russe</option>
           </select>
-          <div style="display:flex; gap:6px;">
-            <button class="ghost" id="shareBtn" style="padding:5px 10px;font-size:11px;">Partager</button>
-            <button class="ghost" id="copyBtn" style="padding:5px 10px;font-size:11px;">Copier</button>
+          <div class="result-actions">
+            <button class="ghost" id="reviseBtn" aria-label="Réviser intelligemment" style="position:relative;" title="Révision intelligente (premium) — passage supplémentaire, quelques secondes de plus" disabled>
+              <span id="reviseBtnLabel">Réviser intelligemment</span>
+              <span class="pro-badge" id="reviseProBadge" style="display:none;">PRO</span>
+            </button>
+            <button class="ghost" id="shareBtn" aria-label="Partager">Partager</button>
+            <button class="ghost" id="copyBtn" aria-label="Copier">Copier</button>
           </div>
         </div>
         <div class="output empty" id="output">La traduction apparaîtra ici.</div>
+        <div class="status" id="reviseStatus" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="revised-section" id="revisedSection">
+      <div class="revised-head">
+        <h3>Version révisée</h3>
+      </div>
+      <div class="revised-output" id="revisedOutput"></div>
+
+      <div class="checks-grid" id="checksGrid"></div>
+
+      <div class="changes-block" id="changesBlock" style="display:none;">
+        <div class="changes-title">Modifications principales</div>
+        <ul class="changes-list" id="changesList"></ul>
+      </div>
+
+      <div class="warnings-block" id="warningsBlock" style="display:none;">
+        <div class="warnings-title">Points à vérifier</div>
+        <ul class="warnings-list" id="warningsList"></ul>
+      </div>
+
+      <div class="sensitive-notice">
+        Motamot améliore la formulation, mais ne remplace pas la vérification d'un professionnel
+        pour un document juridique, médical, administratif ou financier sensible.
+      </div>
+
+      <div class="revised-actions">
+        <button class="ghost" id="revisedCopyBtn">Copier</button>
+        <button class="ghost" id="revisedShareBtn">Partager</button>
+        <button class="primary" id="revisedReplaceBtn" style="padding:10px 16px;font-size:13px;">Remplacer la traduction initiale</button>
       </div>
     </div>
 
@@ -635,13 +824,13 @@
     </div>
   </div>
 
-  <footer>Aucune limite de caractères mensuelle — chaque page, chaque texte, à volonté.</footer>
+  <footer>Vos mots, avec le bon ton — traduction naturelle, documents et historique privé sur cet appareil.</footer>
 </div>
 
 <div class="modal-overlay" id="premiumModal">
   <div class="modal-panel">
-    <h3>Import PDF — Premium</h3>
-    <p>La lecture de texte depuis un PDF est une fonctionnalité premium. Entre ta clé de licence pour la débloquer sur cet appareil.</p>
+    <h3>Motamot Premium</h3>
+    <p>Documents PDF et révision intelligente. Entre ta clé de licence pour débloquer les deux sur cet appareil.</p>
     <input type="text" id="licenseInput" placeholder="Clé de licence">
     <div class="modal-status" id="modalStatus"></div>
     <div class="modal-actions">
@@ -676,8 +865,11 @@
   let lastTranslation = '';
   let mode = 'naturel';
 
+  const MAX_TEXT_CHARS = 20000;
+
   sourceText.addEventListener('input', () => {
     charCount.textContent = sourceText.value.length;
+    charCount.style.color = sourceText.value.length > MAX_TEXT_CHARS ? 'var(--danger)' : '';
   });
 
   function setStatus(msg, type) {
@@ -696,6 +888,10 @@
     const text = sourceText.value.trim();
     if (!text) {
       setStatus('Écris d\'abord un texte à traduire.', 'error');
+      return;
+    }
+    if (text.length > MAX_TEXT_CHARS) {
+      setStatus(`Texte trop long (${text.length} caractères, ${MAX_TEXT_CHARS} max). Coupe-le en plusieurs parties.`, 'error');
       return;
     }
 
@@ -734,6 +930,8 @@
       lastTranslation = data.translation;
       output.textContent = lastTranslation;
       output.classList.remove('empty');
+      revisedSection.classList.remove('open'); // une nouvelle traduction rend l'ancienne révision obsolète
+      reviseBtn.disabled = false;
       setStatus('Traduit ✓', 'ok');
       saveToHistory(text, lastTranslation, sourceLang.value, targetLang.value);
     } catch (err) {
@@ -756,6 +954,8 @@
     output.textContent = 'La traduction apparaîtra ici.';
     output.classList.add('empty');
     lastTranslation = '';
+    revisedSection.classList.remove('open');
+    reviseBtn.disabled = true;
     setStatus('');
   });
 
@@ -797,13 +997,19 @@
       output.textContent = tmpText;
       lastTranslation = tmpText;
       charCount.textContent = sourceText.value.length;
+      revisedSection.classList.remove('open');
     }
   });
 
   // ---------- Premium (import PDF) ----------
-  const PREMIUM_KEY = 'motamot_premium';
+  // Le déblocage n'est plus un simple booléen dans localStorage (qu'importe qui
+  // pouvait falsifier via la console du navigateur) : on stocke le jeton signé
+  // renvoyé par /api/verify-license, et c'est le SERVEUR (/api/extract-pdf) qui
+  // vérifie sa signature avant d'accepter de traiter un PDF.
+  const PREMIUM_TOKEN_KEY = 'motamot_premium_token';
   const GUMROAD_PRODUCT_PERMALINK = 'REMPLACER_PAR_TON_PERMALINK_GUMROAD';
   const GUMROAD_PRODUCT_URL = 'https://REMPLACER.gumroad.com/l/REMPLACER';
+  const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 Mo, aligné sur la limite serveur
 
   const premiumModal = document.getElementById('premiumModal');
   const licenseInput = document.getElementById('licenseInput');
@@ -812,15 +1018,50 @@
   const modalCancel = document.getElementById('modalCancel');
   const modalBuyLink = document.getElementById('modalBuyLink');
   const proBadge = document.getElementById('proBadge');
+  const reviseBtn = document.getElementById('reviseBtn');
+  const reviseBtnLabel = document.getElementById('reviseBtnLabel');
+  const reviseProBadge = document.getElementById('reviseProBadge');
+  const reviseStatus = document.getElementById('reviseStatus');
 
-  modalBuyLink.href = GUMROAD_PRODUCT_URL;
+  const revisedSection = document.getElementById('revisedSection');
+  const revisedOutput = document.getElementById('revisedOutput');
+  const checksGrid = document.getElementById('checksGrid');
+  const changesBlock = document.getElementById('changesBlock');
+  const changesList = document.getElementById('changesList');
+  const warningsBlock = document.getElementById('warningsBlock');
+  const warningsList = document.getElementById('warningsList');
+  const revisedCopyBtn = document.getElementById('revisedCopyBtn');
+  const revisedShareBtn = document.getElementById('revisedShareBtn');
+  const revisedReplaceBtn = document.getElementById('revisedReplaceBtn');
+
+  const gumroadConfigured =
+    GUMROAD_PRODUCT_URL &&
+    !GUMROAD_PRODUCT_URL.includes('REMPLACER') &&
+    /^https:\/\//i.test(GUMROAD_PRODUCT_URL);
+
+  if (gumroadConfigured) {
+    modalBuyLink.href = GUMROAD_PRODUCT_URL;
+  } else {
+    modalBuyLink.hidden = true;
+    modalBuyLink.removeAttribute('href');
+  }
+
+  function getPremiumToken() {
+    return localStorage.getItem(PREMIUM_TOKEN_KEY) || '';
+  }
 
   function isPremium() {
-    return localStorage.getItem(PREMIUM_KEY) === '1';
+    // Vérification optimiste côté client (juste pour l'affichage du badge) :
+    // ce n'est PAS ce qui protège l'accès réel — voir /api/extract-pdf et
+    // /api/revise qui revérifient la signature avec le secret serveur à
+    // chaque appel.
+    return !!getPremiumToken();
   }
 
   function refreshProBadge() {
-    proBadge.style.display = isPremium() ? 'none' : 'inline-block';
+    const locked = !isPremium();
+    proBadge.style.display = locked ? 'inline-block' : 'none';
+    reviseProBadge.style.display = locked ? 'inline-block' : 'none';
   }
   refreshProBadge();
 
@@ -857,11 +1098,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ licenseKey: key, productPermalink: GUMROAD_PRODUCT_PERMALINK }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.valid) {
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { throw new Error(`Réponse inattendue du serveur (code ${res.status}).`); }
+      if (!res.ok || !data.valid || !data.token) {
         throw new Error(data.error || 'Clé invalide.');
       }
-      localStorage.setItem(PREMIUM_KEY, '1');
+      localStorage.setItem(PREMIUM_TOKEN_KEY, data.token);
       modalStatus.textContent = 'Débloqué ✓';
       modalStatus.className = 'modal-status ok';
       refreshProBadge();
@@ -874,22 +1117,173 @@
     }
   });
 
-  // ---------- Import de fichier (.txt / .docx / .pdf premium) ----------
+  // ---------- Révision intelligente (premium, opt-in — jamais automatique) ----------
+  // Ne remplace JAMAIS la traduction initiale : affiche un résultat séparé.
+  // Le remplacement ne se produit que si l'utilisateur clique explicitement
+  // sur "Remplacer la traduction initiale".
+  const CHECK_LABELS = {
+    meaningPreserved: 'Sens conservé',
+    tonePreserved: 'Ton respecté',
+    namesAndNumbersPreserved: 'Noms et chiffres préservés',
+    naturalLanguage: 'Formulation naturelle',
+  };
+
+  function renderRevision(data) {
+    revisedOutput.textContent = data.revisedTranslation;
+
+    checksGrid.innerHTML = Object.entries(CHECK_LABELS).map(([key, label]) => {
+      const pass = !!data.checks?.[key];
+      return `<div class="check-item ${pass ? 'pass' : 'fail'}"><span class="dot"></span>${label}</div>`;
+    }).join('');
+
+    if (data.changesMade && data.changesMade.length) {
+      changesList.innerHTML = data.changesMade.map((c) => `<li>${escapeHtml(c)}</li>`).join('');
+      changesBlock.style.display = 'block';
+    } else {
+      changesBlock.style.display = 'none';
+    }
+
+    if (data.warnings && data.warnings.length) {
+      warningsList.innerHTML = data.warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('');
+      warningsBlock.style.display = 'block';
+    } else {
+      warningsBlock.style.display = 'none';
+    }
+
+    revisedSection.classList.add('open');
+  }
+
+  reviseBtn.addEventListener('click', async () => {
+    if (!isPremium()) {
+      openPremiumModal();
+      return;
+    }
+    if (!lastTranslation || !sourceText.value.trim()) {
+      reviseStatus.textContent = 'Traduis d\'abord un texte avant de le réviser.';
+      reviseStatus.className = 'status error';
+      return;
+    }
+
+    reviseBtn.disabled = true;
+    const originalLabel = reviseBtnLabel.textContent;
+    reviseBtnLabel.textContent = 'Révision…';
+    reviseStatus.textContent = 'Passage supplémentaire en cours (quelques secondes de plus)…';
+    reviseStatus.className = 'status';
+
+    try {
+      const res = await fetch('/api/revise', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getPremiumToken()}`,
+        },
+        body: JSON.stringify({
+          originalText: sourceText.value.trim(),
+          translation: lastTranslation,
+          sourceLang: sourceLang.value,
+          targetLang: targetLang.value,
+          mode,
+        }),
+      });
+
+      const raw = await res.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { throw new Error(`Réponse inattendue du serveur (code ${res.status}).`); }
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem(PREMIUM_TOKEN_KEY);
+          refreshProBadge();
+        }
+        throw new Error(data.error || 'Révision impossible.');
+      }
+
+      renderRevision(data);
+      reviseStatus.textContent = 'Révision prête ci-dessous ✓';
+      reviseStatus.className = 'status ok';
+    } catch (err) {
+      reviseStatus.textContent = err.message || 'Révision impossible.';
+      reviseStatus.className = 'status error';
+    } finally {
+      reviseBtn.disabled = false;
+      reviseBtnLabel.textContent = originalLabel;
+    }
+  });
+
+  revisedCopyBtn.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(revisedOutput.textContent);
+    const original = revisedCopyBtn.textContent;
+    revisedCopyBtn.textContent = 'Copié ✓';
+    setTimeout(() => (revisedCopyBtn.textContent = original), 1500);
+  });
+
+  revisedShareBtn.addEventListener('click', async () => {
+    const text = revisedOutput.textContent;
+    if (!text) return;
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch {}
+    } else {
+      await navigator.clipboard.writeText(text);
+      const original = revisedShareBtn.textContent;
+      revisedShareBtn.textContent = 'Copié pour partage';
+      setTimeout(() => (revisedShareBtn.textContent = original), 1500);
+    }
+  });
+
+  // Remplacement explicite uniquement — jamais automatique.
+  revisedReplaceBtn.addEventListener('click', () => {
+    lastTranslation = revisedOutput.textContent;
+    output.textContent = lastTranslation;
+    output.classList.remove('empty');
+    const original = revisedReplaceBtn.textContent;
+    revisedReplaceBtn.textContent = 'Remplacé ✓';
+    setTimeout(() => (revisedReplaceBtn.textContent = original), 1500);
+  });
+
+
+  // ---------- Import de fichier (.txt / .docx gratuits, .pdf premium) ----------
   uploadBtn.addEventListener('click', () => fileInput.click());
 
-  async function extractPdfText(file) {
-    if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
     }
+    return btoa(binary);
+  }
+
+  // L'extraction PDF se fait maintenant CÔTÉ SERVEUR (voir api/extract-pdf.js) :
+  // le fichier est envoyé en base64 avec le jeton premium, et c'est le serveur
+  // qui vérifie le jeton et fait le parsing — impossible à contourner en modifiant
+  // ce script dans le navigateur, contrairement à l'ancienne extraction via pdf.js.
+  async function extractPdfTextViaServer(file) {
     const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-    let text = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map((item) => item.str).join(' ') + '\n\n';
+    const fileBase64 = arrayBufferToBase64(buffer);
+
+    const res = await fetch('/api/extract-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getPremiumToken()}`,
+      },
+      body: JSON.stringify({ fileBase64 }),
+    });
+
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch { throw new Error(`Réponse inattendue du serveur (code ${res.status}).`); }
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        // Jeton absent/expiré/invalide : on nettoie et on redemande une licence.
+        localStorage.removeItem(PREMIUM_TOKEN_KEY);
+        refreshProBadge();
+      }
+      throw new Error(data.error || 'Extraction du PDF impossible.');
     }
-    return text.trim();
+    return data.text;
   }
 
   fileInput.addEventListener('change', async () => {
@@ -897,9 +1291,17 @@
     if (!file) return;
 
     const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    const isDocx = file.name.toLowerCase().endsWith('.docx');
+
     if (isPdf && !isPremium()) {
       fileInput.value = '';
       openPremiumModal();
+      return;
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setStatus(`Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo, 4 Mo max).`, 'error');
+      fileInput.value = '';
       return;
     }
 
@@ -907,19 +1309,21 @@
     try {
       let text = '';
       if (isPdf) {
-        text = await extractPdfText(file);
-      } else if (file.name.toLowerCase().endsWith('.docx')) {
+        text = await extractPdfTextViaServer(file);
+      } else if (isDocx) {
         const buffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer: buffer });
         text = result.value;
+        if (!text.trim()) throw new Error('Aucun texte trouvé dans ce document .docx.');
       } else {
         text = await file.text();
+        if (!text.trim()) throw new Error('Ce fichier texte est vide.');
       }
       sourceText.value = text;
       charCount.textContent = text.length;
       setStatus('Fichier importé ✓', 'ok');
     } catch (err) {
-      setStatus("Impossible de lire ce fichier.", 'error');
+      setStatus(err.message || "Impossible de lire ce fichier.", 'error');
     } finally {
       fileInput.value = '';
     }
@@ -1032,6 +1436,8 @@
     output.classList.remove('empty');
     lastTranslation = entry.translation;
     charCount.textContent = entry.source.length;
+    revisedSection.classList.remove('open');
+    reviseBtn.disabled = !lastTranslation;
     historyPanel.classList.remove('open');
   });
 

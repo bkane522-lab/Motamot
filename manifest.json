@@ -1,12 +1,21 @@
 {
-  "name": "Motamot — Traduction sans limite",
+  "name": "Motamot — traduisez avec le bon ton",
   "short_name": "Motamot",
-  "description": "Traduisez vos textes sans limite, dans la langue de votre choix.",
+  "description": "Traduisez vos textes naturellement, sans perdre le sens.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#14182B",
-  "theme_color": "#14182B",
+  "background_color": "#08161d",
+  "theme_color": "#08161d",
   "orientation": "portrait",
+  "shortcuts": [
+    {
+      "name": "Nouvelle traduction",
+      "short_name": "Traduire",
+      "description": "Ouvrir Motamot directement sur une traduction vierge",
+      "url": "/?new=1",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
