@@ -4,8 +4,9 @@ const { createVerifyLicenseHandler } = require('../lib/verifyLicenseHandler');
 const { verifyToken } = require('../lib/licenseToken');
 const { mockReq, mockRes } = require('./_mockReqRes');
 
-function gumroadFetch({ success = true } = {}) {
-  return async (url) => {
+function gumroadFetch({ success = true, onRequest } = {}) {
+  return async (url, options = {}) => {
+    if (onRequest) onRequest(url, options);
     if (url.includes('gumroad.com')) {
       return { ok: true, json: async () => ({ success }) };
     }
@@ -13,7 +14,7 @@ function gumroadFetch({ success = true } = {}) {
   };
 }
 
-const baseEnv = { GUMROAD_PRODUCT_PERMALINK: 'motamot-pro', LICENSE_SECRET: 'sup3r-secret' };
+const baseEnv = { GUMROAD_PRODUCT_ID: 'prod_123', LICENSE_SECRET: 'sup3r-secret' };
 
 test('400 si la clé de licence est manquante', async () => {
   const handler = createVerifyLicenseHandler({ fetchImpl: gumroadFetch(), env: baseEnv });
@@ -32,7 +33,7 @@ test('500 si le produit Gumroad n\'est pas configuré', async () => {
 test('500 si LICENSE_SECRET n\'est pas configuré', async () => {
   const handler = createVerifyLicenseHandler({
     fetchImpl: gumroadFetch(),
-    env: { GUMROAD_PRODUCT_PERMALINK: 'motamot-pro' },
+    env: { GUMROAD_PRODUCT_ID: 'prod_123' },
   });
   const res = mockRes();
   await handler(mockReq({ body: { licenseKey: 'ABC' } }), res);
@@ -66,4 +67,19 @@ test('le jeton émis est inutilisable avec un mauvais secret (pas de contourneme
   await handler(mockReq({ body: { licenseKey: 'VRAIE-CLE' } }), res);
   const verification = verifyToken(res.body.token, 'mauvais-secret');
   assert.equal(verification.valid, false);
+});
+
+
+test('envoie product_id et jamais product_permalink à Gumroad', async () => {
+  let body = '';
+  const handler = createVerifyLicenseHandler({
+    fetchImpl: gumroadFetch({ onRequest: (_url, options) => { body = options.body || ''; } }),
+    env: baseEnv,
+  });
+  const res = mockRes();
+  await handler(mockReq({ body: { licenseKey: 'VRAIE-CLE', productPermalink: 'ne-doit-pas-etre-utilise' } }), res);
+  const params = new URLSearchParams(body);
+  assert.equal(params.get('product_id'), baseEnv.GUMROAD_PRODUCT_ID);
+  assert.equal(params.get('product_permalink'), null);
+  assert.equal(params.get('license_key'), 'VRAIE-CLE');
 });
