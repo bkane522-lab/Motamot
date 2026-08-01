@@ -37,13 +37,13 @@ tests/                        80 tests (node:test), tous exécutés et verts
 |---|---|---|
 | `GROQ_API_KEY` | Oui | clé Groq pour la traduction et la révision |
 | `LICENSE_SECRET` | Oui (pour le premium) | secret de signature des jetons — génère une chaîne aléatoire longue, ex. `openssl rand -hex 32` |
-| `GUMROAD_PRODUCT_PERMALINK` | Recommandé | force le produit Gumroad côté serveur |
+| `GUMROAD_PRODUCT_ID` | Recommandé | force le produit Gumroad côté serveur |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Recommandé | active la limitation de requêtes réelle |
 | `ALLOWED_ORIGINS` | Optionnel | origines autorisées séparées par des virgules |
 | `REVISE_RATE_LIMIT` | Optionnel | nombre de révisions/10min par IP (défaut : 10) |
 
 4. Redéployer après toute modification de variable.
-5. Remplacer `GUMROAD_PRODUCT_PERMALINK` et `GUMROAD_PRODUCT_URL` dans
+5. Remplacer `GUMROAD_PRODUCT_ID` et `GUMROAD_PRODUCT_URL` dans
    `index.html` par les vraies valeurs de ton produit Gumroad.
 6. **Après ce déploiement précis** : le service worker est passé en cache
    `motamot-v2` (il était resté en `v1` alors que le JS avait changé) — les
@@ -216,10 +216,10 @@ Documents PDF et révision intelligente" plutôt que le PDF seul. Aucune
 mention de "textes prêts à envoyer" ou d'autres promesses non développées.
 
 ## Freemium (rappel de configuration)
-1. Créer un produit Gumroad (accès premium Motamot), récupérer son *permalink*.
-2. Remplacer `GUMROAD_PRODUCT_PERMALINK` et `GUMROAD_PRODUCT_URL` dans
+1. Créer un produit Gumroad (accès premium Motamot), récupérer son *product ID*.
+2. Remplacer `GUMROAD_PRODUCT_ID` et `GUMROAD_PRODUCT_URL` dans
    `index.html` (cherche `REMPLACER`).
-3. Configurer `GUMROAD_PRODUCT_PERMALINK` et `LICENSE_SECRET` sur Vercel.
+3. Configurer `GUMROAD_PRODUCT_ID` et `LICENSE_SECRET` sur Vercel.
 4. Tester avec une clé de licence issue d'un achat test Gumroad.
 
 ## Autres fonctionnalités (inchangées)
