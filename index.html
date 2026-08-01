@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 <style>
   :root {
     --ink: #14182B;
@@ -25,6 +27,7 @@
     --jade-bright: #3C8B7B;
     --amber: #D8A93B;
     --line: rgba(241, 237, 226, 0.12);
+    --danger: #C4645A;
   }
 
   * { box-sizing: border-box; }
@@ -46,7 +49,7 @@
 
   header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     margin-bottom: 28px;
     padding-bottom: 18px;
@@ -72,6 +75,85 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  .history-toggle {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-paper);
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .history-toggle:hover { border-color: var(--jade-bright); color: var(--jade-bright); }
+  .history-toggle svg { width: 15px; height: 15px; }
+
+  .mode-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .segmented {
+    display: inline-flex;
+    background: var(--ink-soft);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .segmented button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  .segmented button.active {
+    background: var(--jade);
+    color: var(--text-paper);
+  }
+
+  .tool-icons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .icon-btn:hover { border-color: var(--jade-bright); color: var(--jade-bright); }
+  .icon-btn.recording { background: var(--danger); border-color: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
   }
 
   .stage {
@@ -250,6 +332,92 @@
   .status.error { color: #E38080; }
   .status.ok { color: var(--jade-bright); }
 
+  .history-panel {
+    margin-top: 26px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    display: none;
+  }
+
+  .history-panel.open { display: block; }
+
+  .history-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .history-panel-head h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .clear-history {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .clear-history:hover { color: var(--danger); }
+
+  .history-empty {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  .history-item {
+    background: var(--ink-soft);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .history-item:hover { background: #232a44; }
+
+  .history-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .history-preview {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-paper);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .history-delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 5px;
+  }
+  .history-delete:hover { color: var(--danger); }
+
   footer {
     margin-top: 40px;
     text-align: center;
@@ -258,6 +426,100 @@
     color: var(--muted);
     letter-spacing: 0.04em;
   }
+
+  .pro-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--amber);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 4px;
+    border-radius: 5px;
+    pointer-events: none;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 24, 43, 0.78);
+    backdrop-filter: blur(3px);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal-panel {
+    background: var(--paper);
+    color: var(--text-ink);
+    border-radius: 18px;
+    padding: 26px 24px;
+    max-width: 360px;
+    width: 100%;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+  }
+
+  .modal-panel h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    margin: 0 0 8px;
+  }
+
+  .modal-panel p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(27,31,42,0.7);
+    margin: 0 0 16px;
+  }
+
+  .modal-panel input {
+    width: 100%;
+    border: 1px solid rgba(27,31,42,0.2);
+    background: rgba(255,255,255,0.5);
+    border-radius: 10px;
+    padding: 11px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-ink);
+    margin-bottom: 10px;
+  }
+
+  .modal-panel input:focus { outline: 2px solid var(--jade); outline-offset: 1px; }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .modal-actions button.primary { flex: 1; padding: 11px; font-size: 13px; }
+
+  .modal-buy-link {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--jade);
+    text-decoration: underline;
+  }
+
+  .modal-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    min-height: 14px;
+    margin-top: -2px;
+    margin-bottom: 6px;
+  }
+  .modal-status.error { color: var(--danger); }
+  .modal-status.ok { color: var(--jade); }
 
   @media (min-width: 760px) {
     .panels { flex-direction: row; align-items: stretch; }
@@ -277,7 +539,28 @@
         <div class="tagline">Traduction — sans limite</div>
       </div>
     </div>
+    <button class="history-toggle" id="historyToggle" title="Historique">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l4 2"></path></svg>
+      Historique
+    </button>
   </header>
+
+  <div class="mode-row">
+    <div class="segmented" id="modeSegment">
+      <button type="button" class="active" data-mode="naturel">Naturel</button>
+      <button type="button" data-mode="litteral">Littéral</button>
+    </div>
+    <div class="tool-icons">
+      <button class="icon-btn" id="uploadBtn" title="Importer un fichier (.txt, .docx, .pdf en premium)" style="position:relative;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span class="pro-badge" id="proBadge" style="display:none;">PDF</span>
+      </button>
+      <button class="icon-btn" id="micBtn" title="Dicter le texte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+      </button>
+      <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none;">
+    </div>
+  </div>
 
   <div class="stage">
     <div class="panels">
@@ -328,7 +611,10 @@
             <option value="japonais">Japonais</option>
             <option value="russe">Russe</option>
           </select>
-          <button class="ghost" id="copyBtn" style="padding:5px 10px;font-size:11px;">Copier</button>
+          <div style="display:flex; gap:6px;">
+            <button class="ghost" id="shareBtn" style="padding:5px 10px;font-size:11px;">Partager</button>
+            <button class="ghost" id="copyBtn" style="padding:5px 10px;font-size:11px;">Copier</button>
+          </div>
         </div>
         <div class="output empty" id="output">La traduction apparaîtra ici.</div>
       </div>
@@ -339,9 +625,31 @@
       <button class="ghost" id="clearBtn">Effacer</button>
     </div>
     <div class="status" id="status"></div>
+
+    <div class="history-panel" id="historyPanel">
+      <div class="history-panel-head">
+        <h2>Historique</h2>
+        <button class="clear-history" id="clearHistory">Tout effacer</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
   </div>
 
   <footer>Aucune limite de caractères mensuelle — chaque page, chaque texte, à volonté.</footer>
+</div>
+
+<div class="modal-overlay" id="premiumModal">
+  <div class="modal-panel">
+    <h3>Import PDF — Premium</h3>
+    <p>La lecture de texte depuis un PDF est une fonctionnalité premium. Entre ta clé de licence pour la débloquer sur cet appareil.</p>
+    <input type="text" id="licenseInput" placeholder="Clé de licence">
+    <div class="modal-status" id="modalStatus"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="modalCancel" style="flex:1;">Annuler</button>
+      <button class="primary" id="modalVerify">Débloquer</button>
+    </div>
+    <a href="#" id="modalBuyLink" class="modal-buy-link" target="_blank" rel="noopener">Je n'ai pas encore de licence →</a>
+  </div>
 </div>
 
 <script>
@@ -352,11 +660,21 @@
   const translateBtn = document.getElementById('translateBtn');
   const clearBtn = document.getElementById('clearBtn');
   const copyBtn = document.getElementById('copyBtn');
+  const shareBtn = document.getElementById('shareBtn');
   const swapBtn = document.getElementById('swapBtn');
   const status = document.getElementById('status');
   const charCount = document.getElementById('charCount');
+  const modeSegment = document.getElementById('modeSegment');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const micBtn = document.getElementById('micBtn');
+  const historyToggle = document.getElementById('historyToggle');
+  const historyPanel = document.getElementById('historyPanel');
+  const historyList = document.getElementById('historyList');
+  const clearHistoryBtn = document.getElementById('clearHistory');
 
   let lastTranslation = '';
+  let mode = 'naturel';
 
   sourceText.addEventListener('input', () => {
     charCount.textContent = sourceText.value.length;
@@ -366,6 +684,13 @@
     status.textContent = msg || '';
     status.className = 'status' + (type ? ' ' + type : '');
   }
+
+  modeSegment.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    mode = btn.dataset.mode;
+    [...modeSegment.querySelectorAll('button')].forEach((b) => b.classList.toggle('active', b === btn));
+  });
 
   async function translate() {
     const text = sourceText.value.trim();
@@ -386,10 +711,21 @@
           text,
           sourceLang: sourceLang.value,
           targetLang: targetLang.value,
+          mode,
         }),
       });
 
-      const data = await res.json();
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(
+          res.status === 404
+            ? "L'API de traduction est introuvable (404) — vérifie que api/translate.js est bien déployé sur Vercel."
+            : `Réponse inattendue du serveur (code ${res.status}).`
+        );
+      }
 
       if (!res.ok) {
         throw new Error(data.error || 'Erreur de traduction');
@@ -399,6 +735,7 @@
       output.textContent = lastTranslation;
       output.classList.remove('empty');
       setStatus('Traduit ✓', 'ok');
+      saveToHistory(text, lastTranslation, sourceLang.value, targetLang.value);
     } catch (err) {
       setStatus(err.message || 'Une erreur est survenue.', 'error');
     } finally {
@@ -430,6 +767,20 @@
     setTimeout(() => (copyBtn.textContent = original), 1500);
   });
 
+  shareBtn.addEventListener('click', async () => {
+    if (!lastTranslation) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: lastTranslation });
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(lastTranslation);
+      const original = shareBtn.textContent;
+      shareBtn.textContent = 'Copié pour partage';
+      setTimeout(() => (shareBtn.textContent = original), 1500);
+    }
+  });
+
   swapBtn.addEventListener('click', () => {
     swapBtn.classList.add('spin');
     setTimeout(() => swapBtn.classList.remove('spin'), 350);
@@ -448,6 +799,252 @@
       charCount.textContent = sourceText.value.length;
     }
   });
+
+  // ---------- Premium (import PDF) ----------
+  const PREMIUM_KEY = 'motamot_premium';
+  const GUMROAD_PRODUCT_PERMALINK = 'REMPLACER_PAR_TON_PERMALINK_GUMROAD';
+  const GUMROAD_PRODUCT_URL = 'https://REMPLACER.gumroad.com/l/REMPLACER';
+
+  const premiumModal = document.getElementById('premiumModal');
+  const licenseInput = document.getElementById('licenseInput');
+  const modalStatus = document.getElementById('modalStatus');
+  const modalVerify = document.getElementById('modalVerify');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalBuyLink = document.getElementById('modalBuyLink');
+  const proBadge = document.getElementById('proBadge');
+
+  modalBuyLink.href = GUMROAD_PRODUCT_URL;
+
+  function isPremium() {
+    return localStorage.getItem(PREMIUM_KEY) === '1';
+  }
+
+  function refreshProBadge() {
+    proBadge.style.display = isPremium() ? 'none' : 'inline-block';
+  }
+  refreshProBadge();
+
+  function openPremiumModal() {
+    modalStatus.textContent = '';
+    modalStatus.className = 'modal-status';
+    licenseInput.value = '';
+    premiumModal.classList.add('open');
+  }
+
+  function closePremiumModal() {
+    premiumModal.classList.remove('open');
+  }
+
+  modalCancel.addEventListener('click', closePremiumModal);
+  premiumModal.addEventListener('click', (e) => {
+    if (e.target === premiumModal) closePremiumModal();
+  });
+
+  modalVerify.addEventListener('click', async () => {
+    const key = licenseInput.value.trim();
+    if (!key) {
+      modalStatus.textContent = 'Entre une clé de licence.';
+      modalStatus.className = 'modal-status error';
+      return;
+    }
+    modalVerify.disabled = true;
+    modalStatus.textContent = 'Vérification…';
+    modalStatus.className = 'modal-status';
+
+    try {
+      const res = await fetch('/api/verify-license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ licenseKey: key, productPermalink: GUMROAD_PRODUCT_PERMALINK }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        throw new Error(data.error || 'Clé invalide.');
+      }
+      localStorage.setItem(PREMIUM_KEY, '1');
+      modalStatus.textContent = 'Débloqué ✓';
+      modalStatus.className = 'modal-status ok';
+      refreshProBadge();
+      setTimeout(closePremiumModal, 800);
+    } catch (err) {
+      modalStatus.textContent = err.message || 'Vérification impossible.';
+      modalStatus.className = 'modal-status error';
+    } finally {
+      modalVerify.disabled = false;
+    }
+  });
+
+  // ---------- Import de fichier (.txt / .docx / .pdf premium) ----------
+  uploadBtn.addEventListener('click', () => fileInput.click());
+
+  async function extractPdfText(file) {
+    if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    let text = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item) => item.str).join(' ') + '\n\n';
+    }
+    return text.trim();
+  }
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf && !isPremium()) {
+      fileInput.value = '';
+      openPremiumModal();
+      return;
+    }
+
+    setStatus('Lecture du fichier…');
+    try {
+      let text = '';
+      if (isPdf) {
+        text = await extractPdfText(file);
+      } else if (file.name.toLowerCase().endsWith('.docx')) {
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        text = result.value;
+      } else {
+        text = await file.text();
+      }
+      sourceText.value = text;
+      charCount.textContent = text.length;
+      setStatus('Fichier importé ✓', 'ok');
+    } catch (err) {
+      setStatus("Impossible de lire ce fichier.", 'error');
+    } finally {
+      fileInput.value = '';
+    }
+  });
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const langCodes = {
+    'français': 'fr-FR', 'anglais': 'en-US', 'espagnol': 'es-ES', 'allemand': 'de-DE',
+    'italien': 'it-IT', 'portugais': 'pt-PT', 'néerlandais': 'nl-NL', 'arabe': 'ar-SA',
+    'chinois': 'zh-CN', 'japonais': 'ja-JP', 'russe': 'ru-RU',
+  };
+  let recognizer = null;
+  let recording = false;
+
+  if (SpeechRecognition) {
+    micBtn.addEventListener('click', () => {
+      if (recording) {
+        recognizer.stop();
+        return;
+      }
+      recognizer = new SpeechRecognition();
+      recognizer.lang = langCodes[sourceLang.value] || 'fr-FR';
+      recognizer.interimResults = false;
+      recognizer.maxAlternatives = 1;
+
+      recognizer.onstart = () => {
+        recording = true;
+        micBtn.classList.add('recording');
+        setStatus('Écoute en cours…');
+      };
+      recognizer.onerror = () => {
+        setStatus('Dictée interrompue.', 'error');
+      };
+      recognizer.onend = () => {
+        recording = false;
+        micBtn.classList.remove('recording');
+      };
+      recognizer.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        sourceText.value = (sourceText.value ? sourceText.value + ' ' : '') + transcript;
+        charCount.textContent = sourceText.value.length;
+        setStatus('Texte dicté ✓', 'ok');
+      };
+      recognizer.start();
+    });
+  } else {
+    micBtn.style.display = 'none';
+  }
+
+  const HISTORY_KEY = 'motamot_history';
+  const HISTORY_LIMIT = 30;
+
+  function loadHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveToHistory(source, translation, sLang, tLang) {
+    const history = loadHistory();
+    history.unshift({
+      id: Date.now(),
+      source, translation, sLang, tLang,
+      ts: new Date().toISOString(),
+    });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const history = loadHistory();
+    if (!history.length) {
+      historyList.innerHTML = '<div class="history-empty">Aucune traduction enregistrée pour l’instant.</div>';
+      return;
+    }
+    historyList.innerHTML = history.map((item) => `
+      <div class="history-item" data-id="${item.id}">
+        <button class="history-delete" data-delete="${item.id}" title="Supprimer">✕</button>
+        <div class="history-meta">${item.sLang} → ${item.tLang}</div>
+        <div class="history-preview">${escapeHtml(item.translation)}</div>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  historyList.addEventListener('click', (e) => {
+    const delId = e.target.closest('[data-delete]')?.dataset.delete;
+    if (delId) {
+      const history = loadHistory().filter((h) => String(h.id) !== delId);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistory();
+      return;
+    }
+    const item = e.target.closest('.history-item');
+    if (!item) return;
+    const id = item.dataset.id;
+    const entry = loadHistory().find((h) => String(h.id) === id);
+    if (!entry) return;
+    sourceText.value = entry.source;
+    sourceLang.value = entry.sLang === 'Détection auto' ? 'auto' : entry.sLang;
+    targetLang.value = entry.tLang;
+    output.textContent = entry.translation;
+    output.classList.remove('empty');
+    lastTranslation = entry.translation;
+    charCount.textContent = entry.source.length;
+    historyPanel.classList.remove('open');
+  });
+
+  clearHistoryBtn.addEventListener('click', () => {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+  });
+
+  historyToggle.addEventListener('click', () => {
+    historyPanel.classList.toggle('open');
+  });
+
+  renderHistory();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
