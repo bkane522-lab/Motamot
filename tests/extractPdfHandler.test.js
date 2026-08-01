@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createExtractPdfHandler } = require('../lib/extractPdfHandler');
+const { createExtractPdfHandler, hasPdfSignature } = require('../lib/extractPdfHandler');
 const { signToken } = require('../lib/licenseToken');
 const { mockReq, mockRes } = require('./_mockReqRes');
 
@@ -58,14 +58,72 @@ test('400 si le fichier dépasse 4 Mo', async () => {
   assert.match(res.body.error, /volumineux/i);
 });
 
-test('422 si le PDF est corrompu (le parseur échoue)', async () => {
+test('422 si le PDF est structurellement corrompu (message du parseur reconnu comme malformé)', async () => {
   const handler = createExtractPdfHandler({
-    pdfParseImpl: async () => { throw new Error('bad pdf'); },
+    pdfParseImpl: async () => { throw new Error('Invalid PDF structure: bad xref table'); },
     env,
   });
   const res = mockRes();
   await handler(mockReq({ body: { fileBase64: fakePdfBuffer }, headers: validAuthHeader() }), res);
   assert.equal(res.statusCode, 422);
+  assert.match(res.body.error, /corrompu/i);
+});
+
+test('500 (pas 422 !) si le parseur échoue pour une raison interne non liée au PDF lui-même', async () => {
+  const handler = createExtractPdfHandler({
+    pdfParseImpl: async () => { throw new TypeError('Cannot read properties of undefined'); },
+    env,
+  });
+  const res = mockRes();
+  await handler(mockReq({ body: { fileBase64: fakePdfBuffer }, headers: validAuthHeader() }), res);
+  assert.equal(res.statusCode, 500);
+  // Le message ne doit JAMAIS accuser le fichier de l'utilisateur pour une erreur interne.
+  assert.doesNotMatch(res.body.error, /corrompu/i);
+  assert.match(res.body.error, /n'a pas pu lire/i);
+});
+
+test('500 avec message dédié si le parseur PDF est indisponible (échec de chargement du module)', async () => {
+  const handler = createExtractPdfHandler({
+    pdfParseImpl: async () => {
+      const err = new Error('module introuvable');
+      err.code = 'PARSER_UNAVAILABLE';
+      throw err;
+    },
+    env,
+  });
+  const res = mockRes();
+  await handler(mockReq({ body: { fileBase64: fakePdfBuffer }, headers: validAuthHeader() }), res);
+  assert.equal(res.statusCode, 500);
+  assert.match(res.body.error, /indisponible/i);
+});
+
+test('400 si la signature %PDF- est absente (fichier non-PDF déguisé en PDF)', async () => {
+  const notAPdf = Buffer.from('ceci nest pas un pdf du tout').toString('base64');
+  const handler = createExtractPdfHandler({ pdfParseImpl: async () => ({ text: 'x' }), env });
+  const res = mockRes();
+  await handler(mockReq({ body: { fileBase64: notAPdf }, headers: validAuthHeader() }), res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /signature/i);
+});
+
+test('les messages "corrompu" et "erreur interne" sont bien deux textes distincts (pas de confusion trompeuse)', async () => {
+  const malformedHandler = createExtractPdfHandler({
+    pdfParseImpl: async () => { throw new Error('Invalid PDF structure'); },
+    env,
+  });
+  const internalHandler = createExtractPdfHandler({
+    pdfParseImpl: async () => { throw new Error('unexpected internal failure xyz'); },
+    env,
+  });
+  const res1 = mockRes();
+  const res2 = mockRes();
+  await handler_call(malformedHandler, res1);
+  await handler_call(internalHandler, res2);
+  assert.notEqual(res1.body.error, res2.body.error);
+
+  async function handler_call(h, res) {
+    await h(mockReq({ body: { fileBase64: fakePdfBuffer }, headers: validAuthHeader() }), res);
+  }
 });
 
 test('422 si aucun texte n\'est trouvé (PDF scanné)', async () => {
@@ -110,4 +168,11 @@ test('sans jeton signé avec le bon secret, impossible de forger un accès (test
     res
   );
   assert.equal(res.statusCode, 401);
+});
+
+test('hasPdfSignature détecte la signature %PDF- (fonction pure)', () => {
+  assert.equal(hasPdfSignature(Buffer.from('%PDF-1.4 reste du fichier')), true);
+  assert.equal(hasPdfSignature(Buffer.from('\x00\x00%PDF-1.7 avec préambule')), true);
+  assert.equal(hasPdfSignature(Buffer.from('pas un pdf')), false);
+  assert.equal(hasPdfSignature(Buffer.alloc(0)), false);
 });
