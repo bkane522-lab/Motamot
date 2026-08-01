@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Motamot — Traduction sans limite</title>
+<meta name="description" content="Traduisez vos textes sans limite, dans la langue de votre choix.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.png" type="image/png">
+<meta name="theme-color" content="#14182B">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14182B;
+    --ink-soft: #1D2238;
+    --paper: #EDE6D6;
+    --paper-soft: #E4DCC7;
+    --text-ink: #1B1F2A;
+    --text-paper: #F1EDE2;
+    --muted: #8B8FA3;
+    --jade: #2F6F62;
+    --jade-bright: #3C8B7B;
+    --amber: #D8A93B;
+    --line: rgba(241, 237, 226, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text-paper);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    color: var(--text-paper);
+  }
+
+  .brand em {
+    font-style: italic;
+    color: var(--amber);
+  }
+
+  .tagline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stage {
+    position: relative;
+  }
+
+  .panels {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .panel {
+    background: var(--paper);
+    color: var(--text-ink);
+    border-radius: 18px;
+    padding: 20px 20px 16px;
+    position: relative;
+    box-shadow: 0 18px 40px -20px rgba(0,0,0,0.55);
+  }
+
+  .panel.target {
+    background: var(--paper-soft);
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .lang-select {
+    appearance: none;
+    background: transparent;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-ink);
+    padding: 6px 22px 6px 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0L5 6L10 0Z' fill='%231B1F2A'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right center;
+    cursor: pointer;
+  }
+
+  .char-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(27,31,42,0.45);
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 150px;
+    border: none;
+    background: transparent;
+    resize: vertical;
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--text-ink);
+    padding: 0;
+  }
+
+  textarea:focus, .lang-select:focus {
+    outline: 2px solid var(--jade);
+    outline-offset: 3px;
+  }
+
+  textarea::placeholder {
+    color: rgba(27,31,42,0.35);
+    font-style: italic;
+  }
+
+  .output {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    line-height: 1.5;
+    min-height: 150px;
+    white-space: pre-wrap;
+  }
+
+  .output.empty {
+    color: rgba(27,31,42,0.35);
+    font-style: italic;
+  }
+
+  .seam {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 6px 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  .seam::before, .seam::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 9px);
+    opacity: 0.5;
+  }
+
+  .swap-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--jade);
+    border: 3px solid var(--ink);
+    color: var(--text-paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.2s;
+    box-shadow: 0 6px 18px -6px rgba(47,111,98,0.6);
+  }
+
+  .swap-btn:hover { background: var(--jade-bright); }
+  .swap-btn.spin { transform: rotate(180deg); }
+  .swap-btn svg { width: 20px; height: 20px; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  button.primary {
+    background: var(--amber);
+    color: var(--ink);
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 13px 24px;
+    border-radius: 12px;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  button.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 20px -10px rgba(216,169,59,0.6); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  button.ghost {
+    background: transparent;
+    color: var(--text-paper);
+    border: 1px solid var(--line);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+
+  button.ghost:hover { border-color: var(--jade-bright); color: var(--jade-bright); }
+
+  .status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 12px;
+    min-height: 16px;
+  }
+
+  .status.error { color: #E38080; }
+  .status.ok { color: var(--jade-bright); }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  @media (min-width: 760px) {
+    .panels { flex-direction: row; align-items: stretch; }
+    .panel { flex: 1; }
+    .seam { flex-direction: column; padding: 0 10px; }
+    .seam::before, .seam::after { width: 1px; height: auto; background: repeating-linear-gradient(180deg, var(--muted) 0 4px, transparent 4px 9px); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="icons/icon-192.png" alt="Motamot" style="width:38px; height:38px; border-radius:9px;">
+      <div>
+        <div class="brand">Mota<em>mot</em></div>
+        <div class="tagline">Traduction — sans limite</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="panels">
+      <div class="panel source">
+        <div class="panel-head">
+          <select class="lang-select" id="sourceLang">
+            <option value="auto">Détection auto</option>
+            <option value="français">Français</option>
+            <option value="anglais">Anglais</option>
+            <option value="espagnol">Espagnol</option>
+            <option value="allemand">Allemand</option>
+            <option value="italien">Italien</option>
+            <option value="portugais">Portugais</option>
+            <option value="néerlandais">Néerlandais</option>
+            <option value="arabe">Arabe</option>
+            <option value="chinois">Chinois</option>
+            <option value="japonais">Japonais</option>
+            <option value="russe">Russe</option>
+          </select>
+          <span class="char-count" id="charCount">0</span>
+        </div>
+        <textarea id="sourceText" placeholder="Écris ou colle ton texte ici…"></textarea>
+      </div>
+
+      <div class="seam">
+        <button class="swap-btn" id="swapBtn" aria-label="Inverser les langues" title="Inverser les langues">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 1l4 4-4 4"></path>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <path d="M7 23l-4-4 4-4"></path>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="panel target">
+        <div class="panel-head">
+          <select class="lang-select" id="targetLang">
+            <option value="anglais">Anglais</option>
+            <option value="français">Français</option>
+            <option value="espagnol">Espagnol</option>
+            <option value="allemand">Allemand</option>
+            <option value="italien">Italien</option>
+            <option value="portugais">Portugais</option>
+            <option value="néerlandais">Néerlandais</option>
+            <option value="arabe">Arabe</option>
+            <option value="chinois">Chinois</option>
+            <option value="japonais">Japonais</option>
+            <option value="russe">Russe</option>
+          </select>
+          <button class="ghost" id="copyBtn" style="padding:5px 10px;font-size:11px;">Copier</button>
+        </div>
+        <div class="output empty" id="output">La traduction apparaîtra ici.</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="translateBtn">Traduire</button>
+      <button class="ghost" id="clearBtn">Effacer</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <footer>Aucune limite de caractères mensuelle — chaque page, chaque texte, à volonté.</footer>
+</div>
+
+<script>
+  const sourceText = document.getElementById('sourceText');
+  const output = document.getElementById('output');
+  const sourceLang = document.getElementById('sourceLang');
+  const targetLang = document.getElementById('targetLang');
+  const translateBtn = document.getElementById('translateBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const swapBtn = document.getElementById('swapBtn');
+  const status = document.getElementById('status');
+  const charCount = document.getElementById('charCount');
+
+  let lastTranslation = '';
+
+  sourceText.addEventListener('input', () => {
+    charCount.textContent = sourceText.value.length;
+  });
+
+  function setStatus(msg, type) {
+    status.textContent = msg || '';
+    status.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  async function translate() {
+    const text = sourceText.value.trim();
+    if (!text) {
+      setStatus('Écris d\'abord un texte à traduire.', 'error');
+      return;
+    }
+
+    translateBtn.disabled = true;
+    translateBtn.textContent = 'Traduction…';
+    setStatus('Traduction en cours…');
+
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          sourceLang: sourceLang.value,
+          targetLang: targetLang.value,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur de traduction');
+      }
+
+      lastTranslation = data.translation;
+      output.textContent = lastTranslation;
+      output.classList.remove('empty');
+      setStatus('Traduit ✓', 'ok');
+    } catch (err) {
+      setStatus(err.message || 'Une erreur est survenue.', 'error');
+    } finally {
+      translateBtn.disabled = false;
+      translateBtn.textContent = 'Traduire';
+    }
+  }
+
+  translateBtn.addEventListener('click', translate);
+
+  sourceText.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') translate();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    sourceText.value = '';
+    charCount.textContent = '0';
+    output.textContent = 'La traduction apparaîtra ici.';
+    output.classList.add('empty');
+    lastTranslation = '';
+    setStatus('');
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    if (!lastTranslation) return;
+    await navigator.clipboard.writeText(lastTranslation);
+    const original = copyBtn.textContent;
+    copyBtn.textContent = 'Copié ✓';
+    setTimeout(() => (copyBtn.textContent = original), 1500);
+  });
+
+  swapBtn.addEventListener('click', () => {
+    swapBtn.classList.add('spin');
+    setTimeout(() => swapBtn.classList.remove('spin'), 350);
+
+    if (sourceLang.value === 'auto') return;
+
+    const tmpLang = sourceLang.value;
+    sourceLang.value = targetLang.value;
+    targetLang.value = tmpLang;
+
+    if (lastTranslation) {
+      const tmpText = sourceText.value;
+      sourceText.value = lastTranslation;
+      output.textContent = tmpText;
+      lastTranslation = tmpText;
+      charCount.textContent = sourceText.value.length;
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
