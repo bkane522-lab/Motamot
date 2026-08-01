@@ -3,57 +3,55 @@
 // api/verify-license.js) : le PDF est envoyé en base64 et parsé ICI, côté
 // serveur — impossible à débloquer en modifiant le JS du navigateur.
 //
-// BUG CORRIGÉ (production) : `require('pdf-parse')` chargeait le point
-// d'entrée index.js du package, qui contient un bloc de "mode debug"
-// déclenché quand `module.parent` est vide :
-//   let isDebugMode = !module.parent;
-//   if (isDebugMode) { let PDF_FILE = './test/data/05-versions-space.pdf'; ... }
-// Avec le bundling serverless de Vercel (esbuild/ncc), `module.parent` est
-// souvent vide même pour un require() tout à fait normal — le package
-// tentait alors de lire un fichier de test absent du déploiement, ce qui
-// échouait pour TOUT PDF, y compris des PDF texte parfaitement valides, et
-// remontait comme une erreur générique "corrompu ou non supporté".
-// Fix : on importe directement l'implémentation interne du package
-// (lib/pdf-parse.js), qui ne contient pas ce bloc de debug.
+// PARSEUR : unpdf (remplace pdf-parse, voir README pour le pourquoi du
+// changement). unpdf est un package ESM-only conçu pour les environnements
+// serverless/edge — pas d'accès filesystem, pas de mode debug caché, basé
+// sur pdf.js. On le charge via import() dynamique (fonctionne depuis un
+// fichier CommonJS sans changer le "type" du projet).
 //
 // Variables d'environnement :
 //   LICENSE_SECRET               (obligatoire) même secret que verify-license.js
 //   UPSTASH_REDIS_REST_URL / _TOKEN (recommandé) limitation de requêtes
 //   ALLOWED_ORIGINS               (optionnel)
 //
-// Dépendance npm : pdf-parse (voir package.json) — Vercel l'installe
+// Dépendance npm : unpdf (voir package.json) — Vercel l'installe
 // automatiquement au déploiement.
 
 const { createExtractPdfHandler } = require('../lib/extractPdfHandler');
 
-function loadPdfParseImplementation() {
-  try {
-    // Contourne index.js et son bloc de debug — implémentation directe.
-    return require('pdf-parse/lib/pdf-parse.js');
-  } catch (primaryErr) {
-    try {
-      // Filet de sécurité si la structure interne du package change un jour.
-      return require('pdf-parse');
-    } catch (fallbackErr) {
-      console.error('pdf-parse indisponible au chargement', {
-        name: fallbackErr?.name,
-        message: fallbackErr?.message,
-        code: fallbackErr?.code,
+let unpdfModulePromise = null;
+
+function loadUnpdf() {
+  if (!unpdfModulePromise) {
+    unpdfModulePromise = import('unpdf').catch((err) => {
+      console.error('unpdf indisponible au chargement', {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack,
       });
       return null;
-    }
+    });
   }
+  return unpdfModulePromise;
 }
 
-const pdfParseRaw = loadPdfParseImplementation();
-
 async function pdfParseImpl(buffer) {
-  if (!pdfParseRaw) {
-    const err = new Error('pdf-parse indisponible côté serveur');
+  const unpdf = await loadUnpdf();
+  if (!unpdf) {
+    const err = new Error('unpdf indisponible côté serveur');
     err.code = 'PARSER_UNAVAILABLE';
     throw err;
   }
-  return pdfParseRaw(buffer);
+
+  const { getDocumentProxy, extractText } = unpdf;
+  const data = new Uint8Array(buffer);
+  const pdf = await getDocumentProxy(data);
+  const { totalPages, text } = await extractText(pdf, { mergePages: true });
+
+  return {
+    text: Array.isArray(text) ? text.join('\n\n') : text,
+    numpages: totalPages,
+  };
 }
 
 module.exports = createExtractPdfHandler({ pdfParseImpl });
