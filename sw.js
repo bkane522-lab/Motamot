@@ -1,5 +1,5 @@
-const CACHE = 'motamot-v2';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'motamot-v4';
+const ASSETS = ['/', '/index.html', '/manifest.json', '/dictation.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
