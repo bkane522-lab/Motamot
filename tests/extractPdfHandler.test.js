@@ -170,6 +170,22 @@ test('sans jeton signé avec le bon secret, impossible de forger un accès (test
   assert.equal(res.statusCode, 401);
 });
 
+test('422 si le PDF est protégé par mot de passe (message dédié, pas "corrompu")', async () => {
+  const handler = createExtractPdfHandler({
+    pdfParseImpl: async () => {
+      const err = new Error('The PDF is encrypted and requires a password');
+      err.name = 'PasswordException';
+      throw err;
+    },
+    env,
+  });
+  const res = mockRes();
+  await handler(mockReq({ body: { fileBase64: fakePdfBuffer }, headers: validAuthHeader() }), res);
+  assert.equal(res.statusCode, 422);
+  assert.match(res.body.error, /mot de passe/i);
+  assert.doesNotMatch(res.body.error, /corrompu/i);
+});
+
 test('hasPdfSignature détecte la signature %PDF- (fonction pure)', () => {
   assert.equal(hasPdfSignature(Buffer.from('%PDF-1.4 reste du fichier')), true);
   assert.equal(hasPdfSignature(Buffer.from('\x00\x00%PDF-1.7 avec préambule')), true);
