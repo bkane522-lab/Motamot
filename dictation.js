@@ -46,19 +46,24 @@
     function createRecognizer() {
       const r = new SpeechRecognitionCtor();
       r.lang = getLang();
+      onDebugEvent('lang-set', { lang: r.lang });
       r.interimResults = false;
       r.continuous = true;
       r.maxAlternatives = 1;
 
       r.onresult = (e) => {
         let finalCount = 0;
+        let preview = '';
         for (let i = e.resultIndex; i < e.results.length; i++) {
           if (!e.results[i].isFinal) continue;
           finalCount++;
           const transcript = e.results[i][0].transcript.trim();
-          if (transcript) onTranscript(transcript);
+          if (transcript) {
+            onTranscript(transcript);
+            preview = (preview ? preview + ' | ' : '') + transcript.slice(0, 40);
+          }
         }
-        onDebugEvent('result', { resultIndex: e.resultIndex, totalResults: e.results.length, finalCount });
+        onDebugEvent('result', { resultIndex: e.resultIndex, totalResults: e.results.length, finalCount, preview });
       };
 
       r.onerror = (e) => {
