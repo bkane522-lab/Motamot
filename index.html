@@ -333,41 +333,6 @@
   .status.error { color: #E38080; }
   .status.ok { color: var(--jade-bright); }
 
-  .debug-panel {
-    margin-top: 10px;
-    background: var(--ink-soft);
-    border: 1px dashed var(--amber);
-    border-radius: 12px;
-    padding: 10px 12px;
-  }
-
-  .debug-panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--amber);
-    margin-bottom: 6px;
-  }
-
-  .debug-log {
-    max-height: 140px;
-    overflow-y: auto;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10.5px;
-    line-height: 1.5;
-    color: var(--text-paper);
-    white-space: pre-wrap;
-  }
-
-  .debug-log .debug-empty {
-    color: var(--muted);
-    font-style: italic;
-  }
-
   .history-panel {
     margin-top: 26px;
     border-top: 1px solid var(--line);
@@ -747,14 +712,6 @@ footer{margin-top:24px;padding:0 22px;line-height:1.7;font-size:10px;color:#7188
       </button>
       <input type="file" id="fileInput" accept=".txt,.docx,.pdf" style="display:none;">
     </div>
-  </div>
-
-  <div class="debug-panel" id="dictationDebugPanel">
-    <div class="debug-panel-head">
-      <span>Diagnostic dictée (temporaire)</span>
-      <button class="ghost" id="copyDebugLogBtn" style="padding:5px 10px;font-size:11px;">Copier les logs</button>
-    </div>
-    <div class="debug-log" id="dictationDebugLog"></div>
   </div>
 
   <div class="mobile-caption">Traduisez avec le bon ton, sans perdre le sens.</div>
@@ -1373,47 +1330,20 @@ footer{margin-top:24px;padding:0 22px;line-height:1.7;font-size:10px;color:#7188
   });
 
   // ---------- Dictée vocale — écoute continue contrôlée ----------
-  // RÉACTIVÉE (02/08) en mode diagnostic temporaire : un comportement
-  // instable avait été signalé en usage réel après la première correction,
-  // sans logs exploitables pour comprendre pourquoi (pas d'accès simple à
-  // la console Chrome distante depuis mobile). Le panneau ci-dessous affiche
-  // en direct chaque événement interne (démarrage, code d'erreur exact,
-  // fin, relance programmée/déclenchée) avec un bouton pour copier le tout
-  // et me le renvoyer. Une fois le vrai problème identifié, ce panneau sera
-  // retiré — la logique de dictation.js, elle, ne change pas.
+  // Logique complète dans dictation.js (chargé plus haut), testée
+  // isolément côté Node avec une fausse SpeechRecognition. Le panneau de
+  // diagnostic utilisé pendant la mise au point (02/08) a été retiré une
+  // fois la relance automatique confirmée fonctionnelle en usage réel —
+  // les micro-coupures restantes viennent du moteur de reconnaissance
+  // vocale du téléphone lui-même (limite hors de portée du code), pas
+  // d'un bug de Motamot. restartDelayMs reste réduit à 100ms (au lieu du
+  // défaut 300ms de dictation.js) pour limiter la fenêtre de perte.
   const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
   const langCodes = {
     'français': 'fr-FR', 'anglais': 'en-US', 'espagnol': 'es-ES', 'allemand': 'de-DE',
     'italien': 'it-IT', 'portugais': 'pt-PT', 'néerlandais': 'nl-NL', 'arabe': 'ar-SA',
     'chinois': 'zh-CN', 'japonais': 'ja-JP', 'russe': 'ru-RU',
   };
-
-  const dictationDebugLog = document.getElementById('dictationDebugLog');
-  const copyDebugLogBtn = document.getElementById('copyDebugLogBtn');
-  const debugLines = [];
-
-  function pad2(n) { return String(n).padStart(2, '0'); }
-
-  function logDebugEvent(name, detail) {
-    const now = new Date();
-    const ts = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}.${String(now.getMilliseconds()).padStart(3, '0')}`;
-    const detailStr = detail && Object.keys(detail).length ? ' ' + JSON.stringify(detail) : '';
-    const line = `[${ts}] ${name}${detailStr}`;
-    debugLines.push(line);
-    if (debugLines.length > 200) debugLines.shift();
-    dictationDebugLog.textContent = debugLines.join('\n');
-    dictationDebugLog.scrollTop = dictationDebugLog.scrollHeight;
-  }
-
-  logDebugEvent('panel-ready', { speechRecognitionSupported: !!SpeechRecognitionCtor, userAgent: navigator.userAgent.slice(0, 60) });
-
-  copyDebugLogBtn.addEventListener('click', async () => {
-    const text = debugLines.length ? debugLines.join('\n') : '(aucun événement enregistré pour le moment)';
-    await navigator.clipboard.writeText(text);
-    const original = copyDebugLogBtn.textContent;
-    copyDebugLogBtn.textContent = 'Copié ✓';
-    setTimeout(() => (copyDebugLogBtn.textContent = original), 1500);
-  });
 
   if (SpeechRecognitionCtor) {
     const dictation = createDictationController({
@@ -1425,17 +1355,13 @@ footer{margin-top:24px;padding:0 22px;line-height:1.7;font-size:10px;color:#7188
       },
       onStatus: (msg, type) => setStatus(msg, type),
       setRecordingUI: (recording) => micBtn.classList.toggle('recording', recording),
-      onDebugEvent: logDebugEvent,
-      restartDelayMs: 100, // réduit depuis le défaut (300ms) — logs réels du 02/08 : la relance
-                            // fonctionne bien, mais quelques mots se perdent pendant le trou de
-                            // relance ; 100ms limite la fenêtre de perte sans la supprimer complètement.
+      restartDelayMs: 100,
     });
 
     micBtn.addEventListener('click', () => dictation.toggle());
     document.addEventListener('visibilitychange', () => dictation.handleVisibilityChange(document.visibilityState));
   } else {
     micBtn.style.display = 'none';
-    logDebugEvent('unsupported', { note: 'SpeechRecognition indisponible sur ce navigateur' });
   }
 
   const HISTORY_KEY = 'motamot_history';

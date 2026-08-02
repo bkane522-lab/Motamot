@@ -1,4 +1,4 @@
-const CACHE = 'motamot-v7';
+const CACHE = 'motamot-v8';
 const ASSETS = ['/', '/index.html', '/manifest.json', '/dictation.js'];
 
 self.addEventListener('install', (e) => {
