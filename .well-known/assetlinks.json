@@ -1,1 +1,8 @@
-
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "fr.motamot.app",
+        "sha256_cert_fingerprints": ["78:8F:9A:94:D4:FB:2B:9C:D0:33:AD:0A:76:F6:8D:64:8F:5C:1E:EA:8E:80:06:A5:F4:0A:58:FF:8A:B2:5E:8B"]
+      }
+    }]
