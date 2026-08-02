@@ -10,6 +10,12 @@
 // demandé l'arrêt — jamais après un refus/erreur fatale, jamais en arrière-plan.
 // Aucun enregistrement audio n'est conservé : seul le texte transcrit
 // (onTranscript) sort de ce module.
+//
+// `onDebugEvent(event, detail)` est un hook optionnel, silencieux par défaut,
+// qui expose chaque étape interne (démarrage, erreur exacte remontée par le
+// navigateur, fin, relance programmée/déclenchée...) — utilisé par index.html
+// pour un panneau de diagnostic visible à l'écran le temps de comprendre un
+// comportement instable en usage réel, sans changer la logique elle-même.
 
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) {
@@ -26,6 +32,7 @@
     onTranscript,
     onStatus,
     setRecordingUI,
+    onDebugEvent = () => {},
     restartDelayMs = 300,
     setTimeoutFn = typeof setTimeout !== 'undefined' ? setTimeout : null,
     clearTimeoutFn = typeof clearTimeout !== 'undefined' ? clearTimeout : null,
@@ -34,6 +41,7 @@
     let isListening = false;
     let userStoppedListening = true;
     let restartTimer = null;
+    let sessionCount = 0;
 
     function createRecognizer() {
       const r = new SpeechRecognitionCtor();
@@ -43,15 +51,20 @@
       r.maxAlternatives = 1;
 
       r.onresult = (e) => {
+        let finalCount = 0;
         for (let i = e.resultIndex; i < e.results.length; i++) {
           if (!e.results[i].isFinal) continue;
+          finalCount++;
           const transcript = e.results[i][0].transcript.trim();
           if (transcript) onTranscript(transcript);
         }
+        onDebugEvent('result', { resultIndex: e.resultIndex, totalResults: e.results.length, finalCount });
       };
 
       r.onerror = (e) => {
-        if (FATAL_RECOGNITION_ERRORS.indexOf(e.error) !== -1) {
+        const fatal = FATAL_RECOGNITION_ERRORS.indexOf(e.error) !== -1;
+        onDebugEvent('error', { code: e.error, message: e.message || '', fatal });
+        if (fatal) {
           userStoppedListening = true;
           if (restartTimer) clearTimeoutFn(restartTimer);
           setRecordingUI(false);
@@ -62,6 +75,7 @@
 
       r.onend = () => {
         isListening = false;
+        onDebugEvent('end', { userStopped: userStoppedListening });
         if (userStoppedListening) {
           setRecordingUI(false);
           onStatus('Dictée terminée.', 'ok');
@@ -75,19 +89,24 @@
 
     function scheduleRestart() {
       if (restartTimer) clearTimeoutFn(restartTimer);
+      onDebugEvent('restart-scheduled', { delayMs: restartDelayMs });
       restartTimer = setTimeoutFn(() => {
         if (userStoppedListening) return;
+        onDebugEvent('restart-fired', {});
         startSession();
       }, restartDelayMs);
     }
 
     function startSession() {
+      sessionCount++;
       recognizer = createRecognizer();
       try {
         recognizer.start();
         isListening = true;
         setRecordingUI(true);
-      } catch {
+        onDebugEvent('session-start', { sessionCount });
+      } catch (e) {
+        onDebugEvent('session-start-error', { message: e?.message || String(e) });
         // start() peut lever si une session est déjà active : on ignore,
         // le cycle onend/onerror de la session en cours reprendra la main.
       }
@@ -95,12 +114,14 @@
 
     function start() {
       userStoppedListening = false;
+      onDebugEvent('start', {});
       onStatus('Écoute en cours… Appuie de nouveau pour arrêter.');
       startSession();
     }
 
     function stop() {
       userStoppedListening = true;
+      onDebugEvent('stop', {});
       if (restartTimer) clearTimeoutFn(restartTimer);
       if (recognizer) {
         try { recognizer.stop(); } catch {}
@@ -113,7 +134,10 @@
     }
 
     function handleVisibilityChange(visibilityState) {
-      if (visibilityState === 'hidden' && !userStoppedListening) stop();
+      if (visibilityState === 'hidden' && !userStoppedListening) {
+        onDebugEvent('visibility-stop', {});
+        stop();
+      }
     }
 
     return {
